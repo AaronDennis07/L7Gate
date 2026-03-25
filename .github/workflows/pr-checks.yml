@@ -1,0 +1,60 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  # Job 1: Verify the React Frontend
+  test-client:
+    name: Test Client (Node.js)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./client
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: ./client/package-lock.json
+          
+      - name: Install Dependencies
+        run: npm ci
+        
+      - name: Verify Build
+        run: npm run build
+
+  # Job 2: Verify the Spring Boot Gateway
+  test-server:
+    name: Test Server (Java)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./server
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+          
+      - name: Verify Build and Run Tests
+        run: mvn clean verify
+
+  # Job 3: Verify the Multi-Stage Dockerfile
+  test-docker-build:
+    name: Dry-Run Docker Build
+    needs: [test-client, test-server]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Test Docker Build (No Push)
+        run: docker build -t l7gate:dry-run .
